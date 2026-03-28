@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
-from .models import Course, Lesson, Question, Choice, Submission
+from .models import Course, Lesson, Question, Choice, Submission, Enrollment
+
 
 def course_detail(request, course_id):
     course = Course.objects.get(id=course_id)
@@ -14,26 +15,36 @@ def course_detail(request, course_id):
 
 
 def submit(request, course_id):
-    if request.method == 'POST':
-        selected_choices = request.POST.getlist('choice')
-        submission = Submission.objects.create()
+    course = Course.objects.get(id=course_id)
 
-        for choice_id in selected_choices:
-            choice = Choice.objects.get(id=choice_id)
-            submission.choices.add(choice)
+    # simple enrollment (dummy)
+    enrollment = Enrollment.objects.first()
+    if not enrollment:
+        enrollment = Enrollment.objects.create(user="TestUser", course=course)
 
-        return redirect('show_exam_result', course_id=course_id)
+    selected_choices = request.POST.getlist('choice')
+
+    submission = Submission.objects.create(enrollment=enrollment)
+
+    for choice_id in selected_choices:
+        choice = Choice.objects.get(id=choice_id)
+        submission.choices.add(choice)
+
+    return redirect('show_exam_result', course_id=course.id, submission_id=submission.id)
 
 
-def show_exam_result(request, course_id):
-    submission = Submission.objects.last()
-    total = submission.choices.count()
-    correct = submission.choices.filter(is_correct=True).count()
+def show_exam_result(request, course_id, submission_id):
+    submission = Submission.objects.get(id=submission_id)
 
-    score = (correct / total) * 100 if total > 0 else 0
+    choices = submission.choices.all()
+    total = choices.count()
+    correct = choices.filter(is_correct=True).count()
+
+    grade = (correct / total) * 100 if total > 0 else 0
 
     return render(request, 'course_details_bootstrap.html', {
-        'score': score,
+        'score': grade,
         'correct': correct,
-        'total': total
+        'total': total,
+        'selected_ids': [c.id for c in choices]
     })
