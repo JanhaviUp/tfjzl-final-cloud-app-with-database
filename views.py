@@ -40,11 +40,13 @@ def show_exam_result(request, course_id, submission_id):
     total = choices.count()
     correct = choices.filter(is_correct=True).count()
 
+    possible = total   # ⭐ required
     grade = (correct / total) * 100 if total > 0 else 0
 
     return render(request, 'course_details_bootstrap.html', {
         'score': grade,
         'correct': correct,
         'total': total,
+        'possible': possible,   # ⭐ required
         'selected_ids': [c.id for c in choices]
     })
